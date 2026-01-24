@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Staff Panel - Blood Bank Management System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <!-- Navigation -->
+        <nav class="navbar">
+            <div class="navbar-brand">
+                <h2>🏥 Blood Bank - Staff Panel</h2>
+            </div>
+            <ul class="navbar-menu">
+                <li><a href="{{ url_for('home') }}">Home</a></li>
+                <li><a href="{{ url_for('staff_dashboard') }}" class="active">Staff</a></li>
+                <li><a href="{{ url_for('logout') }}">Logout</a></li>
+            </ul>
+        </nav>
+        
+        <!-- Main Content -->
+        <main class="staff-container">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            
+            <h1>Staff Dashboard</h1>
+            
+            <!-- Quick Stats -->
+            <section class="stats-section">
+                <div class="stat-card">
+                    <h3>{{ pending_requests }}</h3>
+                    <p>Pending Requests</p>
+                </div>
+                <div class="stat-card">
+                    <h3>{{ processing_requests }}</h3>
+                    <p>Processing Requests</p>
+                </div>
+                <div class="stat-card">
+                    <h3>{{ assigned_deliveries|length }}</h3>
+                    <p>Assigned Deliveries</p>
+                </div>
+            </section>
+            
+            <!-- Tabs -->
+            <div class="tabs">
+                <button class="tab-button active" onclick="switchTab('requests')">📋 Requests</button>
+                <button class="tab-button" onclick="switchTab('deliveries')">🚚 Deliveries</button>
+                <button class="tab-button" onclick="switchTab('inventory')">🩸 Blood Inventory</button>
+            </div>
+            
+            <!-- Requests Tab -->
+            <div id="requests" class="tab-content active">
+                <div class="section-header">
+                    <h2>Blood Requests</h2>
+                    <button class="btn btn-primary" onclick="showAddRequestForm()">+ Create Request</button>
+                </div>
+                
+                <div id="addRequestForm" class="form-modal" style="display:none;">
+                    <div class="form-card">
+                        <h3>Create Blood Request</h3>
+                        <form id="requestForm">
+                            <div class="form-row">
+                                <input type="text" id="req_patient_name" placeholder="Patient Name" class="form-control" required>
+                                <input type="text" id="req_hospital_name" placeholder="Hospital Name" class="form-control" required>
+                            </div>
+                            <div class="form-row">
+                                <select id="req_blood_type" class="form-control" required>
+                                    <option>Blood Type</option>
+                                    <option>O+</option><option>O-</option>
+                                    <option>A+</option><option>A-</option>
+                                    <option>B+</option><option>B-</option>
+                                    <option>AB+</option><option>AB-</option>
+                                </select>
+                                <input type="number" id="req_quantity" placeholder="Quantity" min="1" class="form-control" required>
+                            </div>
+                            <div class="form-row">
+                                <input type="tel" id="req_hospital_contact" placeholder="Hospital Contact" class="form-control">
+                                <input type="text" id="req_reason" placeholder="Reason for Request" class="form-control">
+                            </div>
+                            <button type="button" onclick="staffAddRequest()" class="btn btn-success">Create Request</button>
+                            <button type="button" onclick="closeAddRequestForm()" class="btn btn-secondary">Cancel</button>
+                        </form>
+                    </div>
+                </div>
+                
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Patient</th>
+                            <th>Blood Type</th>
+                            <th>Qty</th>
+                            <th>Hospital</th>
+                            <th>Reason</th>
+                            <th>Status</th>
+                            <th>Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for req in all_requests %}
+                            <tr>
+                                <td>#{{ req.id }}</td>
+                                <td>{{ req.patient_name }}</td>
+                                <td><span class="badge">{{ req.blood_type }}</span></td>
+                                <td>{{ req.quantity_needed }}</td>
+                                <td>{{ req.hospital_name }}</td>
+                                <td>{{ req.reason or 'N/A' }}</td>
+                                <td><span class="status-badge status-{{ req.status }}">{{ req.status }}</span></td>
+                                <td>{{ req.created_at.strftime('%Y-%m-%d') }}</td>
+                                <td>
+                                    {% if req.status == 'pending' %}
+                                        <button class="btn btn-sm btn-success" onclick="createDelivery({{ req.id }})">Create Delivery</button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Deliveries Tab -->
+            <div id="deliveries" class="tab-content">
+                <h2>My Deliveries (3-Stage Tracking)</h2>
+                <div class="deliveries-list">
+                    {% for delivery in assigned_deliveries %}
+                        <div class="delivery-card">
+                            <div class="delivery-header">
+                                <h3>Delivery #{{ delivery.id }}</h3>
+                                <span class="status-badge status-{{ delivery.status }}">{{ delivery.status }}</span>
+                            </div>
+                            <div class="delivery-timeline">
+                                <div class="timeline-stage {% if delivery.get_stage_number() >= 1 %}active{% endif %}">
+                                    <div class="stage-circle">1</div>
+                                    <p>Request Created</p>
+                                    <small>{{ delivery.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+                                </div>
+                                <div class="timeline-stage {% if delivery.get_stage_number() >= 2 %}active{% endif %}">
+                                    <div class="stage-circle">2</div>
+                                    <p>Processing</p>
+                                    <small>{{ delivery.processing_started_at.strftime('%Y-%m-%d %H:%M') if delivery.processing_started_at else 'Pending' }}</small>
+                                </div>
+                                <div class="timeline-stage {% if delivery.get_stage_number() >= 3 %}active{% endif %}">
+                                    <div class="stage-circle">3</div>
+                                    <p>Completed</p>
+                                    <small>{{ delivery.completed_at.strftime('%Y-%m-%d %H:%M') if delivery.completed_at else 'Pending' }}</small>
+                                </div>
+                            </div>
+                            <div class="delivery-details">
+                                <p><strong>Request:</strong> {{ delivery.request.patient_name }} ({{ delivery.request.blood_type }})</p>
+                                <p><strong>Quantity:</strong> {{ delivery.quantity_dispatched }} units</p>
+                                <p><strong>Hospital:</strong> {{ delivery.request.hospital_name }}</p>
+                                <p><strong>Address:</strong> {{ delivery.delivery_address or 'Not specified' }}</p>
+                                <p><strong>Expected Delivery:</strong> {{ delivery.expected_delivery_date.strftime('%Y-%m-%d') if delivery.expected_delivery_date else 'N/A' }}</p>
+                            </div>
+                            <div class="delivery-actions">
+                                {% if delivery.status == 'request_created' %}
+                                    <button class="btn btn-info" onclick="updateDeliveryStatus({{ delivery.id }}, 'processing')">Start Processing</button>
+                                {% elif delivery.status == 'processing' %}
+                                    <button class="btn btn-success" onclick="updateDeliveryStatus({{ delivery.id }}, 'completed')">Mark Completed</button>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+            
+            <!-- Inventory Tab -->
+            <div id="inventory" class="tab-content">
+                <h2>Blood Inventory</h2>
+                <div class="blood-inventory-grid">
+                    {% set blood_types = ['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'] %}
+                    {% for bt in blood_types %}
+                        <div class="blood-card">
+                            <h3>{{ bt }}</h3>
+                            {% set count = blood_inventory|selectattr('blood_type', 'equalto', bt)|list|length %}
+                            <p class="blood-count">{{ count }} units available</p>
+                        </div>
+                    {% endfor %}
+                </div>
+                
+                <h3 style="margin-top: 30px;">All Available Units</h3>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Blood Type</th>
+                            <th>Quantity</th>
+                            <th>Status</th>
+                            <th>Collected</th>
+                            <th>Expiry</th>
+                            <th>Days Left</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for unit in blood_inventory %}
+                            <tr>
+                                <td>#{{ unit.id }}</td>
+                                <td><span class="badge">{{ unit.blood_type }}</span></td>
+                                <td>{{ unit.quantity }}</td>
+                                <td><span class="status-badge status-{{ unit.status }}">{{ unit.status }}</span></td>
+                                <td>{{ unit.collection_date.strftime('%Y-%m-%d') }}</td>
+                                <td>{{ unit.expiry_date.strftime('%Y-%m-%d') if unit.expiry_date else 'N/A' }}</td>
+                                <td>{% if unit.expiry_date %}<span class="{% if unit.get_remaining_days() < 7 %}text-danger{% endif %}">{{ unit.get_remaining_days() }}</span>{% else %}N/A{% endif %}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </main>
+        
+        <!-- Footer -->
+        <footer class="footer">
+            <p>&copy; 2026 Blood Bank Management System. All rights reserved.</p>
+        </footer>
+    </div>
+    
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>

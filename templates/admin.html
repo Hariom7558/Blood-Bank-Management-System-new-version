@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Blood Bank Management System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <!-- Navigation -->
+        <nav class="navbar">
+            <div class="navbar-brand">
+                <h2>🏥 Blood Bank - Admin Panel</h2>
+            </div>
+            <ul class="navbar-menu">
+                <li><a href="{{ url_for('home') }}">Home</a></li>
+                <li><a href="{{ url_for('admin_dashboard') }}" class="active">Admin</a></li>
+                <li><a href="{{ url_for('logout') }}">Logout</a></li>
+            </ul>
+        </nav>
+        
+        <!-- Main Content -->
+        <main class="admin-container">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            
+            <!-- Dashboard Stats -->
+            <section class="stats-section">
+                <h1>Admin Dashboard</h1>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>{{ total_users }}</h3>
+                        <p>Total Users</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>{{ total_donors }}</h3>
+                        <p>Donors</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>{{ total_staff }}</h3>
+                        <p>Staff Members</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>{{ total_blood_units }}</h3>
+                        <p>Blood Units</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>{{ total_requests }}</h3>
+                        <p>Total Requests</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>${{ "%.2f"|format(total_spending) }}</h3>
+                        <p>Total Spending</p>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Tabs Navigation -->
+            <div class="tabs">
+                <button class="tab-button active" onclick="switchTab('donors')">👥 Donors</button>
+                <button class="tab-button" onclick="switchTab('staff')">👷 Staff</button>
+                <button class="tab-button" onclick="switchTab('blood')">🩸 Blood Units</button>
+                <button class="tab-button" onclick="switchTab('requests')">📋 Requests</button>
+                <button class="tab-button" onclick="switchTab('purchases')">🛒 Purchases</button>
+            </div>
+            
+            <!-- Donors Tab -->
+            <div id="donors" class="tab-content active">
+                <div class="section-header">
+                    <h2>Manage Donors</h2>
+                    <button class="btn btn-primary" onclick="showAddDonorForm()">+ Add Donor</button>
+                </div>
+                
+                <div id="addDonorForm" class="form-modal" style="display:none;">
+                    <div class="form-card">
+                        <h3>Add New Donor</h3>
+                        <form id="donorForm">
+                            <div class="form-row">
+                                <input type="text" id="donor_username" placeholder="Username" class="form-control" required>
+                                <input type="email" id="donor_email" placeholder="Email" class="form-control" required>
+                            </div>
+                            <div class="form-row">
+                                <input type="text" id="donor_full_name" placeholder="Full Name" class="form-control" required>
+                                <input type="tel" id="donor_phone" placeholder="Phone" class="form-control">
+                            </div>
+                            <div class="form-row">
+                                <select id="donor_blood_type" class="form-control" required>
+                                    <option>Blood Type</option>
+                                    <option>O+</option><option>O-</option>
+                                    <option>A+</option><option>A-</option>
+                                    <option>B+</option><option>B-</option>
+                                    <option>AB+</option><option>AB-</option>
+                                </select>
+                                <input type="password" id="donor_password" placeholder="Password" class="form-control">
+                            </div>
+                            <div class="form-row">
+                                <input type="text" id="donor_address" placeholder="Address" class="form-control">
+                                <input type="text" id="donor_city" placeholder="City" class="form-control">
+                            </div>
+                            <button type="button" onclick="addDonor()" class="btn btn-success">Add Donor</button>
+                            <button type="button" onclick="closeAddDonorForm()" class="btn btn-secondary">Cancel</button>
+                        </form>
+                    </div>
+                </div>
+                
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Blood Type</th>
+                            <th>Phone</th>
+                            <th>Eligible</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for donor in donors %}
+                            <tr>
+                                <td>#{{ donor.id }}</td>
+                                <td>{{ donor.full_name }}</td>
+                                <td>{{ donor.email }}</td>
+                                <td><span class="badge">{{ donor.blood_type }}</span></td>
+                                <td>{{ donor.phone or 'N/A' }}</td>
+                                <td>{% if donor.is_eligible %}<span class="badge-success">✓</span>{% else %}<span class="badge-danger">✗</span>{% endif %}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-info" onclick="editDonor({{ donor.id }})">Edit</button>
+                                    <button class="btn btn-sm btn-danger" onclick="deleteDonor({{ donor.id }})">Delete</button>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Staff Tab -->
+            <div id="staff" class="tab-content">
+                <div class="section-header">
+                    <h2>Manage Staff</h2>
+                    <button class="btn btn-primary" onclick="showAddStaffForm()">+ Add Staff</button>
+                </div>
+                
+                <div id="addStaffForm" class="form-modal" style="display:none;">
+                    <div class="form-card">
+                        <h3>Add New Staff Member</h3>
+                        <form id="staffForm">
+                            <div class="form-row">
+                                <input type="text" id="staff_username" placeholder="Username" class="form-control" required>
+                                <input type="email" id="staff_email" placeholder="Email" class="form-control" required>
+                            </div>
+                            <div class="form-row">
+                                <input type="text" id="staff_full_name" placeholder="Full Name" class="form-control" required>
+                                <input type="tel" id="staff_phone" placeholder="Phone" class="form-control">
+                            </div>
+                            <div class="form-row">
+                                <input type="text" id="staff_department" placeholder="Department" class="form-control">
+                                <input type="password" id="staff_password" placeholder="Password" class="form-control">
+                            </div>
+                            <button type="button" onclick="addStaff()" class="btn btn-success">Add Staff</button>
+                            <button type="button" onclick="closeAddStaffForm()" class="btn btn-secondary">Cancel</button>
+                        </form>
+                    </div>
+                </div>
+                
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Department</th>
+                            <th>Phone</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for s in staff %}
+                            <tr>
+                                <td>#{{ s.id }}</td>
+                                <td>{{ s.full_name }}</td>
+                                <td>{{ s.email }}</td>
+                                <td>{{ s.department }}</td>
+                                <td>{{ s.phone or 'N/A' }}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-info" onclick="editStaff({{ s.id }})">Edit</button>
+                                    <button class="btn btn-sm btn-danger" onclick="deleteStaff({{ s.id }})">Delete</button>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Blood Units Tab -->
+            <div id="blood" class="tab-content">
+                <div class="section-header">
+                    <h2>Blood Inventory</h2>
+                    <button class="btn btn-primary" onclick="showAddBloodForm()">+ Add Blood Unit</button>
+                </div>
+                
+                <div id="addBloodForm" class="form-modal" style="display:none;">
+                    <div class="form-card">
+                        <h3>Add Blood Unit</h3>
+                        <form id="bloodForm">
+                            <div class="form-row">
+                                <select id="blood_type" class="form-control" required>
+                                    <option>Blood Type</option>
+                                    <option>O+</option><option>O-</option>
+                                    <option>A+</option><option>A-</option>
+                                    <option>B+</option><option>B-</option>
+                                    <option>AB+</option><option>AB-</option>
+                                </select>
+                                <input type="number" id="blood_quantity" placeholder="Quantity" min="1" value="1" class="form-control" required>
+                            </div>
+                            <div class="form-row">
+                                <input type="date" id="blood_expiry" class="form-control" required>
+                                <input type="text" id="blood_notes" placeholder="Notes" class="form-control">
+                            </div>
+                            <button type="button" onclick="addBloodUnit()" class="btn btn-success">Add Unit</button>
+                            <button type="button" onclick="closeAddBloodForm()" class="btn btn-secondary">Cancel</button>
+                        </form>
+                    </div>
+                </div>
+                
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Blood Type</th>
+                            <th>Quantity</th>
+                            <th>Status</th>
+                            <th>Expiry</th>
+                            <th>Days Left</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for unit in blood_inventory %}
+                            <tr>
+                                <td>#{{ unit.id }}</td>
+                                <td><span class="badge">{{ unit.blood_type }}</span></td>
+                                <td>{{ unit.quantity }}</td>
+                                <td><span class="status-badge status-{{ unit.status }}">{{ unit.status }}</span></td>
+                                <td>{{ unit.expiry_date.strftime('%Y-%m-%d') if unit.expiry_date else 'N/A' }}</td>
+                                <td>{{ unit.get_remaining_days() or 'N/A' }}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-info" onclick="editBlood({{ unit.id }})">Edit</button>
+                                    <button class="btn btn-sm btn-danger" onclick="deleteBlood({{ unit.id }})">Delete</button>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Requests Tab -->
+            <div id="requests" class="tab-content">
+                <h2>Blood Requests</h2>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Patient</th>
+                            <th>Blood Type</th>
+                            <th>Quantity</th>
+                            <th>Hospital</th>
+                            <th>Status</th>
+                            <th>Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for req in requests %}
+                            <tr>
+                                <td>#{{ req.id }}</td>
+                                <td>{{ req.patient_name }}</td>
+                                <td><span class="badge">{{ req.blood_type }}</span></td>
+                                <td>{{ req.quantity_needed }}</td>
+                                <td>{{ req.hospital_name }}</td>
+                                <td><span class="status-badge status-{{ req.status }}">{{ req.status }}</span></td>
+                                <td>{{ req.created_at.strftime('%Y-%m-%d') }}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-info" onclick="editRequest({{ req.id }})">Edit</button>
+                                    <button class="btn btn-sm btn-danger" onclick="deleteRequest({{ req.id }})">Delete</button>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Purchases Tab -->
+            <div id="purchases" class="tab-content">
+                <div class="section-header">
+                    <h2>Purchase Orders</h2>
+                    <button class="btn btn-primary" onclick="showAddPurchaseForm()">+ New Purchase</button>
+                </div>
+                
+                <div id="addPurchaseForm" class="form-modal" style="display:none;">
+                    <div class="form-card">
+                        <h3>Create Purchase Order</h3>
+                        <form id="purchaseForm">
+                            <div class="form-row">
+                                <select id="purchase_blood_type" class="form-control" required>
+                                    <option>Blood Type</option>
+                                    <option>O+</option><option>O-</option>
+                                    <option>A+</option><option>A-</option>
+                                    <option>B+</option><option>B-</option>
+                                    <option>AB+</option><option>AB-</option>
+                                </select>
+                                <input type="number" id="purchase_qty" placeholder="Quantity" min="1" class="form-control" required>
+                            </div>
+                            <div class="form-row">
+                                <input type="number" id="purchase_unit_price" placeholder="Unit Price" min="1" step="0.01" class="form-control" required>
+                                <input type="text" id="purchase_supplier" placeholder="Supplier Name" class="form-control" required>
+                            </div>
+                            <div class="form-row">
+                                <input type="tel" id="purchase_contact" placeholder="Supplier Contact" class="form-control">
+                                <input type="text" id="purchase_notes" placeholder="Notes" class="form-control">
+                            </div>
+                            <button type="button" onclick="addPurchase()" class="btn btn-success">Create Order</button>
+                            <button type="button" onclick="closeAddPurchaseForm()" class="btn btn-secondary">Cancel</button>
+                        </form>
+                    </div>
+                </div>
+                
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Blood Type</th>
+                            <th>Quantity</th>
+                            <th>Unit Price</th>
+                            <th>Total</th>
+                            <th>Supplier</th>
+                            <th>Status</th>
+                            <th>Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for purchase in purchases %}
+                            <tr>
+                                <td>#{{ purchase.id }}</td>
+                                <td><span class="badge">{{ purchase.blood_type }}</span></td>
+                                <td>{{ purchase.quantity }}</td>
+                                <td>${{ "%.2f"|format(purchase.unit_price) }}</td>
+                                <td>${{ "%.2f"|format(purchase.total_price) }}</td>
+                                <td>{{ purchase.supplier_name }}</td>
+                                <td><span class="status-badge status-{{ purchase.status }}">{{ purchase.status }}</span></td>
+                                <td>{{ purchase.purchase_date.strftime('%Y-%m-%d') }}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-info" onclick="editPurchase({{ purchase.id }})">Edit</button>
+                                    <button class="btn btn-sm btn-danger" onclick="deletePurchase({{ purchase.id }})">Delete</button>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </main>
+        
+        <!-- Footer -->
+        <footer class="footer">
+            <p>&copy; 2026 Blood Bank Management System. All rights reserved.</p>
+        </footer>
+    </div>
+    
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>

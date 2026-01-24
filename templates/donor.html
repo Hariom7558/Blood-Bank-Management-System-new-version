@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Donor Panel - Blood Bank Management System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <!-- Navigation -->
+        <nav class="navbar">
+            <div class="navbar-brand">
+                <h2>🏥 Blood Bank - Donor Panel</h2>
+            </div>
+            <ul class="navbar-menu">
+                <li><a href="{{ url_for('home') }}">Home</a></li>
+                <li><a href="{{ url_for('donor_profile') }}" class="active">My Profile</a></li>
+                <li><a href="{{ url_for('logout') }}">Logout</a></li>
+            </ul>
+        </nav>
+        
+        <!-- Main Content -->
+        <main class="donor-container">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            
+            <h1>Welcome, {{ user.full_name }}! 👋</h1>
+            
+            <!-- Profile Card -->
+            <section class="profile-card">
+                <h2>My Profile</h2>
+                <div class="profile-content">
+                    <div class="profile-item">
+                        <label>Email:</label>
+                        <p>{{ donor.email }}</p>
+                    </div>
+                    <div class="profile-item">
+                        <label>Blood Type:</label>
+                        <p><span class="badge">{{ donor.blood_type }}</span></p>
+                    </div>
+                    <div class="profile-item">
+                        <label>Phone:</label>
+                        <p>{{ donor.phone or 'Not provided' }}</p>
+                    </div>
+                    <div class="profile-item">
+                        <label>Address:</label>
+                        <p>{{ donor.address or 'Not provided' }}</p>
+                    </div>
+                    <div class="profile-item">
+                        <label>City:</label>
+                        <p>{{ donor.city or 'Not provided' }}</p>
+                    </div>
+                    <div class="profile-item">
+                        <label>Eligible to Donate:</label>
+                        <p>{% if donor.is_eligible %}<span class="badge-success">✓ Yes</span>{% else %}<span class="badge-danger">✗ No</span>{% endif %}</p>
+                    </div>
+                    <div class="profile-item">
+                        <label>Last Donation:</label>
+                        <p>{{ donor.last_donation_date.strftime('%Y-%m-%d') if donor.last_donation_date else 'Never' }}</p>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Quick Actions -->
+            <section class="quick-actions">
+                <button class="action-btn" onclick="showScheduleDonationForm()">
+                    <span class="icon">💉</span>
+                    <span>Schedule Donation</span>
+                </button>
+                <button class="action-btn" onclick="showPurchaseForm()">
+                    <span class="icon">🛒</span>
+                    <span>Purchase Blood</span>
+                </button>
+            </section>
+            
+            <!-- Schedule Donation Form -->
+            <div id="scheduleDonationForm" class="form-modal" style="display:none;">
+                <div class="form-card">
+                    <h3>Schedule Your Donation</h3>
+                    <form id="donationForm">
+                        <p>Thank you for your interest in donating! Your blood type is <strong>{{ donor.blood_type }}</strong></p>
+                        <div class="form-group">
+                            <label>Donation Date (preferred)</label>
+                            <input type="date" id="donation_date" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <textarea id="donation_notes" placeholder="Any additional information..." class="form-control" rows="4"></textarea>
+                        </div>
+                        <button type="button" onclick="scheduleDonation()" class="btn btn-success">Confirm Donation</button>
+                        <button type="button" onclick="closeScheduleDonationForm()" class="btn btn-secondary">Cancel</button>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Purchase Form -->
+            <div id="purchaseForm" class="form-modal" style="display:none;">
+                <div class="form-card">
+                    <h3>Purchase Blood Units</h3>
+                    <form id="bloodPurchaseForm">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Blood Type</label>
+                                <select id="purchase_type" class="form-control" required>
+                                    <option>Select Blood Type</option>
+                                    {% for bt in ['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'] %}
+                                        <option value="{{ bt }}">{{ bt }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Quantity (Units)</label>
+                                <input type="number" id="purchase_qty" min="1" value="1" class="form-control" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Unit Price ($)</label>
+                                <input type="number" id="purchase_unit_price" min="1" value="100" step="0.01" class="form-control" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Total Price</label>
+                                <input type="number" id="purchase_total" disabled class="form-control">
+                            </div>
+                        </div>
+                        <button type="button" onclick="doPurchaseBlood()" class="btn btn-success">Complete Purchase</button>
+                        <button type="button" onclick="closePurchaseForm()" class="btn btn-secondary">Cancel</button>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Statistics -->
+            <section class="donor-stats">
+                <h2>My Donation Statistics</h2>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>{{ donation_count }}</h3>
+                        <p>Times Donated</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>{{ donation_count * 450 }} ml</h3>
+                        <p>Total Blood Donated</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>{{ donor_requests|length }}</h3>
+                        <p>Requests Made</p>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Donation History -->
+            <section class="history-section">
+                <h2>My Donation History</h2>
+                {% if donation_history %}
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Date</th>
+                                <th>Status</th>
+                                <th>Expiry Date</th>
+                                <th>Days Left</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for donation in donation_history %}
+                                <tr>
+                                    <td>#{{ donation.id }}</td>
+                                    <td>{{ donation.collection_date.strftime('%Y-%m-%d') }}</td>
+                                    <td><span class="status-badge status-{{ donation.status }}">{{ donation.status }}</span></td>
+                                    <td>{{ donation.expiry_date.strftime('%Y-%m-%d') if donation.expiry_date else 'N/A' }}</td>
+                                    <td>{% if donation.expiry_date %}<span class="{% if donation.get_remaining_days() < 7 %}text-danger{% endif %}">{{ donation.get_remaining_days() }}</span>{% else %}N/A{% endif %}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <div class="empty-state">
+                        <p>You haven't donated yet. Schedule your first donation to help save lives!</p>
+                    </div>
+                {% endif %}
+            </section>
+            
+            <!-- Request History -->
+            <section class="history-section">
+                <h2>My Requests</h2>
+                {% if donor_requests %}
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Patient</th>
+                                <th>Blood Type</th>
+                                <th>Hospital</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for req in donor_requests %}
+                                <tr>
+                                    <td>#{{ req.id }}</td>
+                                    <td>{{ req.patient_name }}</td>
+                                    <td><span class="badge">{{ req.blood_type }}</span></td>
+                                    <td>{{ req.hospital_name }}</td>
+                                    <td><span class="status-badge status-{{ req.status }}">{{ req.status }}</span></td>
+                                    <td>{{ req.created_at.strftime('%Y-%m-%d') }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <div class="empty-state">
+                        <p>No requests made yet.</p>
+                    </div>
+                {% endif %}
+            </section>
+            
+            <!-- Info Card -->
+            <section class="info-card">
+                <h3>Why Donate Blood?</h3>
+                <ul>
+                    <li>✅ Help save up to 3 lives with a single donation</li>
+                    <li>✅ Free health screening and checkup</li>
+                    <li>✅ Strengthen your cardiovascular system</li>
+                    <li>✅ Reduce iron overload in your body</li>
+                    <li>✅ Feel good knowing you've helped someone</li>
+                </ul>
+                <p><strong>Safe to donate every 8 weeks (56 days)</strong></p>
+            </section>
+        </main>
+        
+        <!-- Footer -->
+        <footer class="footer">
+            <p>&copy; 2026 Blood Bank Management System. All rights reserved.</p>
+        </footer>
+    </div>
+    
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script>
+        // Calculate total price
+        document.getElementById('purchase_qty').addEventListener('input', calculateTotal);
+        document.getElementById('purchase_unit_price').addEventListener('input', calculateTotal);
+        
+        function calculateTotal() {
+            const qty = parseFloat(document.getElementById('purchase_qty').value) || 0;
+            const price = parseFloat(document.getElementById('purchase_unit_price').value) || 0;
+            const total = qty * price;
+            document.getElementById('purchase_total').value = total.toFixed(2);
+        }
+    </script>
+</body>
+</html>
