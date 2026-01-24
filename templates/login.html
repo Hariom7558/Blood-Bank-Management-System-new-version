@@ -4,16 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Blood Bank Management System - Login</title>
+
+    <!-- CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
+
 <body class="login-page">
+
     <div class="login-container">
+
         <div class="login-card">
+
             <div class="login-header">
                 <h1>🏥 Blood Bank System</h1>
                 <p>Management & Donation Portal</p>
             </div>
-            
+
+            <!-- Flash Messages -->
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
                     {% for category, message in messages %}
@@ -23,27 +30,47 @@
                     {% endfor %}
                 {% endif %}
             {% endwith %}
-            
+
+            <!-- Login Form -->
             <form method="POST" class="login-form">
+
                 <div class="form-group">
                     <label for="username">Username</label>
-                    <input type="text" id="username" name="username" required class="form-control">
+                    <input
+                        type="text"
+                        id="username"
+                        name="username"
+                        class="form-control"
+                        required
+                    >
                     <small>Demo: admin, staff1, donor1</small>
                 </div>
-                
+
                 <div class="form-group">
                     <label for="password">Password</label>
-                    <input type="password" id="password" name="password" required class="form-control">
+                    <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        class="form-control"
+                        required
+                    >
                     <small>Demo password: admin123 / staff123 / donor123</small>
                 </div>
-                
-                <button type="submit" class="btn btn-primary btn-block">Login</button>
+
+                <button type="submit" class="btn btn-primary btn-block">
+                    Login
+                </button>
+
             </form>
-            
+
             <div class="login-footer">
-                <p>Don't have an account? <a href="{{ url_for('register') }}">Register as Donor</a></p>
+                <p>
+                    Don't have an account?
+                    <a href="{{ url_for('register') }}">Register as Donor</a>
+                </p>
             </div>
-            
+
             <div class="demo-info">
                 <h4>Demo Accounts:</h4>
                 <ul>
@@ -52,12 +79,21 @@
                     <li><strong>Donor:</strong> donor1 / donor123</li>
                 </ul>
             </div>
+
         </div>
-        
+
         <footer class="login-footer-info">
-            <p><strong>Blood Bank Owners:</strong> Hariom Satav, Meet Patil, Prajwal Shinde</p>
-            <p>📞 7558671952 | 📧 satavhariom775@gmail.com</p>
+            <p>
+                <strong>Blood Bank Owners:</strong>
+                Hariom Satav, Meet Patil, Prajwal Shinde
+            </p>
+            <p>
+                📞 7558671952 | 📧 satavhariom775@gmail.com
+            </p>
         </footer>
+
     </div>
+
 </body>
 </html>
+

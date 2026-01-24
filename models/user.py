@@ -75,7 +75,13 @@ class Donor(User):
     last_donation_date = db.Column(db.DateTime)
     
     # Relationships
-    donations = db.relationship('BloodUnit', backref='donor', lazy=True)
+    donations = db.relationship(
+    'BloodUnit',
+    backref='donor',
+    foreign_keys='BloodUnit.donor_id',
+    lazy=True
+    )
+
     
     __mapper_args__ = {
         'polymorphic_identity': 'donor'
